@@ -105,18 +105,50 @@ public class HashTableChain<K, V> implements Map<K, V>  {
         private Iterator<Entry<K, V>> iter = null;
 
         @Override
-        public boolean hasNext() {
-        	// FILL HERE
+        public boolean hasNext() 
+        {
+        	if (iter != null && iter.hasNext()) 
+        	{
+                return true;
+            }
+            do 
+            {
+                index++;
+                if (index >= table.length) 
+                {
+                    return false;
+                }
+            } while (table[index] == null);
+            iter = table[index].iterator();
+            return iter.hasNext();
         }
 
         @Override
         public Map.Entry<K, V> next() {
-        	// FILL HERE
+        	if (iter.hasNext()) 
+        	{
+                lastItemReturned = iter.next();
+                return lastItemReturned;
+            } 
+        	
+        	else 
+            {
+                throw new NoSuchElementException();
+            }
         }
 
         @Override
         public void remove() {
-        	// FILL HERE
+        	if (lastItemReturned == null)
+        	{
+        		throw new IllegalStateException();
+        	}
+        	
+        	else
+        	{
+        		iter.remove();
+        		lastItemReturned = null;
+        	}
         }
     }
 
@@ -132,38 +164,118 @@ public class HashTableChain<K, V> implements Map<K, V>  {
     // returns number of keys
     @Override
     public int size() {
-        // FILL HERE
+        return numKeys;
     }
 
     // returns boolean if table has no keys
     @Override
     public boolean isEmpty() {
-    	// FILL HERE
+    	return numKeys == 0;
     }
 
     // returns boolean if table has the searched for key
     @Override
     public boolean containsKey(Object key) {
-    	// Fill Here
+    	int index = key.hashCode() % table.length;
+    	
+    	if (index < 0)
+    	{
+    		index += table.length;
+    	}
+    	
+    	if (table[index] == null)
+    	{
+    		return false;
+    	}
+    	
+    	for (Entry<K, V> entry : table[index])
+    	{
+    		if (entry.getKey().equals(key))
+    		{
+    			return true;
+    		}
+    	}
+    	
+    	return false;
     }
 
     // returns boolean if table has the searched for value
     @Override
     public boolean containsValue(Object value) {
-    	// FILL HERE
+    	for (LinkedList<Entry<K, V>> list : table)
+    	{
+    		for (Entry<K, V> entry : list)
+    		{
+    			if (entry.getValue().equals(value))
+    			{
+    				return true;
+    			}
+    		}
+    	}
     	
+    	return false;
     }
 
     // returns Value if table has the searched for key
     @Override
     public V get(Object key) {
-    	// FILL HERE
+    	int index = key.hashCode() % table.length;
+    	
+    	if (index < 0)
+    	{
+    		index += table.length;
+    	}
+    	
+    	if (table[index] == null)
+    	{
+    		return null;
+    	}
+    	
+    	for (Entry<K, V> nextItem : table[index])
+    	{
+    		if (nextItem.getKey().equals(key))
+    		{
+    			return nextItem.getValue();
+    		}    		
+    	}
+    	
+    	return null;
     }
 
     // adds the key and value pair to the table using hashing
     @Override
     public V put(K key, V value) {
-    	// FILL HERE
+    	int index = key.hashCode() % table.length;
+    	
+    	if (index < 0)
+    	{
+    		index += table.length;
+    	}
+    	
+    	if (table[index] == null)
+    	{
+    		table[index] = new LinkedList<>();
+    	}
+    	
+    	for (Entry<K, V> nextItem : table[index])
+    	{
+    		if (nextItem.getKey().equals(key))
+    		{
+    			V oldVal = nextItem.getValue();
+    			nextItem.setValue(value);
+    			return oldVal;
+    		}
+    	}
+    	
+    	table[index].addFirst(new Entry<>(key, value));
+    	numKeys++;
+    	
+    	if (numKeys > (LOAD_THRESHOLD * table.length))
+    	{
+    		rehash();
+    	}
+    	
+    	return null;
     }
 
 
@@ -171,7 +283,22 @@ public class HashTableChain<K, V> implements Map<K, V>  {
      * Resizes the table to be 2X +1 bigger than previous
      */
     private void rehash() {
-    	// FILL HERE
+    	LinkedList<Entry<K, V>>[] oldTable = table;
+    	table = new LinkedList[oldTable.length * 2 + 1];
+    	numKeys = 0;
+    	
+    	for (LinkedList<Entry<K, V>> list : oldTable)
+    	{
+    		if (list != null)
+    		{
+    			for (Entry<K, V> entry : list)
+    			{
+    				put(entry.getKey(), entry.getValue());
+    				numKeys++;
+    			}
+    		}
+    	}
+    		
     }
 
     @Override
@@ -193,7 +320,35 @@ public class HashTableChain<K, V> implements Map<K, V>  {
     // return removed value
     @Override
     public V remove(Object key) {
-    	// FILL HERE
+    	int index = key.hashCode() % table.length;
+    	if (index < 0)
+    	{
+    		index += table.length;
+    	}
+    	
+    	if (table[index] == null)
+    	{
+    		return null;
+    	}
+    	
+    	for (Entry<K, V> entry : table[index])
+    	{
+    		if (entry.getKey().equals(key))
+    		{
+    			V value = entry.getValue();
+    			table[index].remove(entry);
+    			numKeys--;
+    			
+    			if (table[index].isEmpty())
+    			{
+    				table[index] = null;
+    			}
+    			
+    			return value;		
+    		}
+    	}
+    	
+    	return null;
     }
 
     // throws UnsupportedOperationException
@@ -205,13 +360,28 @@ public class HashTableChain<K, V> implements Map<K, V>  {
     // empties the table
     @Override
     public void clear() {
-    	// Fill HERE
+    	for (LinkedList<Entry<K, V>> list : table)
+    	{
+    		list = null;
+    	}
     }
 
     // returns a view of the keys in set view
     @Override
     public Set<K> keySet() {
-    	// FILL HERE
+    	Set<K> keySet = new HashSet<K>(size());
+        for (LinkedList<Entry<K,V>> list : table) 
+        {
+            for (Entry<K,V> entry : list) 
+            {
+                if (entry != null) 
+                {
+                    keySet.add(entry.getKey());
+                }
+            }
+        }
+        
+        return keySet;
     }
 
     // throws UnsupportedOperationException
@@ -224,20 +394,27 @@ public class HashTableChain<K, V> implements Map<K, V>  {
     // returns a set view of the hash table
     @Override
     public Set<Map.Entry<K, V>> entrySet() {
-    	// FILL HERE
-
-
+    	return new EntrySet();
     }
 
     @Override
     public boolean equals(Object o) {
-    	// FILL HERE
+    	if (o == null || getClass() != o.getClass())
+		{
+			return false ;
+		}
+		HashTableChain<K, V> other = (HashTableChain<K, V>) o ;
+		return toString().equals(other.toString()) ;
 
     }
 
     @Override
     public int hashCode() {
-    	//FILL HERE
+    	int hash = 11;
+    	
+    	hash = hash * 17;
+    	
+    	return hash;
 
     }
 }
